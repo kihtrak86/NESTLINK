@@ -11,13 +11,15 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.5.0",
-    "nodemailer": "^9.0.3"
+    "mongodb": "^7.6.0",
+    "mongoose": "^8.24.4",
+    "nodemailer": "^9.0.3",
+    "resend": "^6.32.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "nodemon": "^1.14.10"
   }
 }
