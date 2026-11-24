@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { extractUrlPreview } from "../services/api";
 
-const emptyForm = { title: "", url: "", folder: "", tags: "" };
+const emptyForm = { title: "", description: "", url: "", folder: "", tags: "" };
 const NEW_FOLDER_VALUE = "__new__";
 
 function isValidUrl(value) {
@@ -19,6 +20,12 @@ export default function BookmarkModal({ isOpen, onClose, onSave, initialData, fo
   const [isNewFolder, setIsNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
 
+  // Phase 2 URL metadata preview state
+  const [extracting, setExtracting] = useState(false);
+  const [extractStatus, setExtractStatus] = useState("");
+  const [extractError, setExtractError] = useState("");
+  const [previewMeta, setPreviewMeta] = useState(null);
+
   const isEditMode = Boolean(initialData);
   const defaultFolder = folders[0] || "Personal";
 
@@ -27,6 +34,7 @@ export default function BookmarkModal({ isOpen, onClose, onSave, initialData, fo
       const folderExists = folders.includes(initialData.folder);
       setForm({
         title: initialData.title || "",
+        description: initialData.description || "",
         url: initialData.url || "",
         folder: folderExists ? initialData.folder : NEW_FOLDER_VALUE,
         tags: (initialData.tags || []).join(", "),
@@ -39,6 +47,10 @@ export default function BookmarkModal({ isOpen, onClose, onSave, initialData, fo
       setNewFolderName("");
     }
     setErrors({});
+    setExtracting(false);
+    setExtractStatus("");
+    setExtractError("");
+    setPreviewMeta(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData, isOpen]);
 
@@ -46,6 +58,46 @@ export default function BookmarkModal({ isOpen, onClose, onSave, initialData, fo
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleFetchMetadata = async () => {
+    const targetUrl = form.url.trim();
+    if (!isValidUrl(targetUrl)) {
+      setExtractError("Enter a valid http:// or https:// URL first.");
+      return;
+    }
+
+    setExtracting(true);
+    setExtractError("");
+    setExtractStatus("Reading webpage metadata...");
+    try {
+      const data = await extractUrlPreview(targetUrl);
+      const meta = data?.metadata || {};
+      setPreviewMeta(meta);
+
+      setForm((prev) => ({
+        ...prev,
+        title: prev.title.trim() ? prev.title : meta.title || meta.ogTitle || prev.title,
+        description: prev.description.trim()
+          ? prev.description
+          : meta.description || meta.ogDescription || prev.description,
+      }));
+
+      setExtractStatus(
+        meta.title || meta.description
+          ? "Webpage metadata extracted. You can edit any field before saving."
+          : "Page reached, but limited metadata was found. You can still save normally."
+      );
+    } catch (err) {
+      setPreviewMeta(null);
+      setExtractStatus("");
+      setExtractError(
+        err?.response?.data?.message ||
+          "Could not extract webpage metadata. You can still save the bookmark normally."
+      );
+    } finally {
+      setExtracting(false);
+    }
   };
 
   const handleFolderSelect = (e) => {
@@ -83,6 +135,7 @@ export default function BookmarkModal({ isOpen, onClose, onSave, initialData, fo
 
     const payload = {
       title: form.title.trim(),
+      description: form.description.trim(),
       url: form.url.trim(),
       folder: effectiveFolder,
       tags: form.tags
@@ -104,70 +157,115 @@ export default function BookmarkModal({ isOpen, onClose, onSave, initialData, fo
     }
   };
 
+  const fieldClass = (hasError) => `field ${hasError ? "field-error" : ""}`;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6"
+        className="surface bg-white dark:bg-[#0a0a0a] w-full max-w-md p-7 shadow-pop dark:shadow-none animate-scale-in max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={isEditMode ? "Edit bookmark" : "Add bookmark"}
       >
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-            {isEditMode ? "Edit Bookmark" : "Add Bookmark"}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold tracking-tight">
+            {isEditMode ? "Edit bookmark" : "Add bookmark"}
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl leading-none"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-carbon-100 dark:hover:bg-carbon-800 text-xl leading-none"
             aria-label="Close"
           >
             &times;
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {errors.form && (
-            <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400 px-3 py-2 rounded-lg">
-              {errors.form}
-            </p>
-          )}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {errors.form && <p className="notice">{errors.form}</p>}
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Title</label>
+            <label className="field-label">URL</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={form.url}
+                onChange={handleChange("url")}
+                placeholder="https://example.com"
+                className={`flex-1 ${fieldClass(errors.url)}`}
+              />
+              <button
+                type="button"
+                onClick={handleFetchMetadata}
+                disabled={extracting || !form.url.trim()}
+                className="btn-secondary h-10 px-3 whitespace-nowrap text-xs"
+                title="Extract title and description from webpage"
+              >
+                {extracting ? "Fetching..." : "Fetch info"}
+              </button>
+            </div>
+            {errors.url && (
+              <p className="text-xs text-black/60 dark:text-white/60 mt-1.5">{errors.url}</p>
+            )}
+            {extractStatus && (
+              <p className="text-xs text-[#0070f3] dark:text-[#52a8ff] mt-1.5">{extractStatus}</p>
+            )}
+            {extractError && (
+              <p className="text-xs text-[#c62a2f] dark:text-[#ff6369] mt-1.5">{extractError}</p>
+            )}
+            {previewMeta && (previewMeta.title || previewMeta.description) && (
+              <div className="mt-2 rounded-lg border border-[#ebebeb] dark:border-[#242424] bg-[#fafafa] dark:bg-[#111] p-2.5 text-xs">
+                <p className="font-medium truncate">{previewMeta.title || previewMeta.domain}</p>
+                {previewMeta.description && (
+                  <p className="text-[#666] dark:text-[#a1a1a1] line-clamp-2 mt-0.5">
+                    {previewMeta.description}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="field-label">Title</label>
             <input
               type="text"
               value={form.title}
               onChange={handleChange("title")}
               placeholder="e.g. React Documentation"
-              className={`w-full px-3 py-2 rounded-lg border dark:bg-slate-700 dark:text-slate-100 ${
-                errors.title ? "border-red-400" : "border-slate-200 dark:border-slate-600"
-              } focus:outline-none focus:ring-2 focus:ring-brand-500`}
+              className={fieldClass(errors.title)}
             />
-            {errors.title && <p className="text-xs text-red-600 mt-1">{errors.title}</p>}
+            {errors.title && (
+              <p className="text-xs text-black/60 dark:text-white/60 mt-1.5">{errors.title}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">URL</label>
-            <input
-              type="text"
-              value={form.url}
-              onChange={handleChange("url")}
-              placeholder="https://example.com"
-              className={`w-full px-3 py-2 rounded-lg border dark:bg-slate-700 dark:text-slate-100 ${
-                errors.url ? "border-red-400" : "border-slate-200 dark:border-slate-600"
-              } focus:outline-none focus:ring-2 focus:ring-brand-500`}
+            <label className="field-label">
+              Description{" "}
+              <span className="text-black/60 dark:text-white/60">
+                (optional, improves AI search)
+              </span>
+            </label>
+            <textarea
+              rows={2}
+              maxLength={1000}
+              value={form.description}
+              onChange={handleChange("description")}
+              placeholder="Brief summary of what this resource covers..."
+              className="field resize-none"
             />
-            {errors.url && <p className="text-xs text-red-600 mt-1">{errors.url}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Folder</label>
+            <label className="field-label">Folder</label>
             {!isNewFolder ? (
               <select
                 value={form.folder}
                 onChange={handleFolderSelect}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+                className="field cursor-pointer"
               >
                 {folders.map((f) => (
                   <option key={f} value={f}>
@@ -184,9 +282,7 @@ export default function BookmarkModal({ isOpen, onClose, onSave, initialData, fo
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder="e.g. Recipes, Travel, Side Project"
-                  className={`flex-1 px-3 py-2 rounded-lg border dark:bg-slate-700 dark:text-slate-100 ${
-                    errors.folder ? "border-red-400" : "border-slate-200 dark:border-slate-600"
-                  } focus:outline-none focus:ring-2 focus:ring-brand-500`}
+                  className={`flex-1 ${fieldClass(errors.folder)}`}
                 />
                 {folders.length > 0 && (
                   <button
@@ -195,43 +291,44 @@ export default function BookmarkModal({ isOpen, onClose, onSave, initialData, fo
                       setIsNewFolder(false);
                       setForm((prev) => ({ ...prev, folder: folders[0] }));
                     }}
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    className="btn-secondary h-10 px-3.5"
                   >
                     Cancel
                   </button>
                 )}
               </div>
             )}
-            {errors.folder && <p className="text-xs text-red-600 mt-1">{errors.folder}</p>}
+            {errors.folder && (
+              <p className="text-xs text-black/60 dark:text-white/60 mt-1.5">{errors.folder}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Tags <span className="text-slate-400 font-normal">(comma separated)</span>
+            <label className="field-label">
+              Tags <span className="text-black/60 dark:text-white/60">(comma separated)</span>
             </label>
             <input
               type="text"
               value={form.tags}
               onChange={handleChange("tags")}
               placeholder="react, docs, frontend"
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="field"
             />
           </div>
 
-          <div className="flex gap-3 mt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium"
-            >
+          {!isEditMode && (
+            <p className="text-xs text-[#666] dark:text-[#a1a1a1] leading-relaxed">
+              After saving, NestLink automatically extracts webpage details, generates an AI
+              summary, and suggests tags &amp; folders in the background.
+            </p>
+          )}
+
+          <div className="flex gap-3 mt-1">
+            <button type="button" onClick={onClose} className="btn-secondary h-10 flex-1">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium disabled:opacity-60"
-            >
-              {submitting ? "Saving..." : isEditMode ? "Save Changes" : "Add Bookmark"}
+            <button type="submit" disabled={submitting} className="btn-primary h-10 flex-1">
+              {submitting ? "Saving..." : isEditMode ? "Save changes" : "Add bookmark"}
             </button>
           </div>
         </form>

@@ -8,7 +8,7 @@ const getFolders = async (req, res) => {
     const folders = await Folder.find({ user: req.user._id }).sort({ name: 1 });
     res.status(200).json(folders);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch folders", error: error.message });
+    res.status(500).json({ message: "Failed to fetch folders" });
   }
 };
 
@@ -16,12 +16,16 @@ const getFolders = async (req, res) => {
 // @route POST /api/folders
 const createFolder = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, description = "" } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ message: "Folder name is required" });
     }
 
-    const folder = await Folder.create({ name: name.trim(), user: req.user._id });
+    const folder = await Folder.create({
+      name: name.trim(),
+      description: typeof description === "string" ? description.trim().slice(0, 300) : "",
+      user: req.user._id,
+    });
     res.status(201).json(folder);
   } catch (error) {
     if (error.code === 11000) {
@@ -31,7 +35,7 @@ const createFolder = async (req, res) => {
       const messages = Object.values(error.errors).map((e) => e.message);
       return res.status(400).json({ message: messages.join(", ") });
     }
-    res.status(500).json({ message: "Failed to create folder", error: error.message });
+    res.status(500).json({ message: "Failed to create folder" });
   }
 };
 
@@ -52,7 +56,7 @@ const deleteFolder = async (req, res) => {
 
     res.status(200).json({ message: "Folder deleted", id: req.params.id });
   } catch (error) {
-    res.status(500).json({ message: "Failed to delete folder", error: error.message });
+    res.status(500).json({ message: "Failed to delete folder" });
   }
 };
 

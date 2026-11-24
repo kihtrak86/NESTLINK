@@ -1,14 +1,14 @@
 const { Resend } = require("resend");
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const sendEmail = async ({ email, subject, message }) => {
   try {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error("RESEND_API_KEY is not configured in server/.env");
+    }
+
+    const resend = new Resend(apiKey);
     console.log("📧 Sending email via Resend...");
-    console.log(
-      "📧 Resend API key configured:",
-      !!process.env.RESEND_API_KEY
-    );
 
     const { data, error } = await resend.emails.send({
       from: "NestLink <onboarding@resend.dev>",

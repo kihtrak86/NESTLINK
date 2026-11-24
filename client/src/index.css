@@ -2,20 +2,120 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100;
+@layer base {
+  html {
+    font-feature-settings: "liga", "calt";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+    background: #fafafa;
+  }
+  html.dark { background: #000; }
+  body {
+    @apply bg-[#fafafa] text-[#171717] dark:bg-black dark:text-[#ededed] antialiased
+      selection:bg-[#0070f3] selection:text-white;
+    letter-spacing: -0.011em;
+  }
+  :focus-visible {
+    @apply outline-none;
+    box-shadow: 0 0 0 2px #fafafa, 0 0 0 4px #0070f3;
+  }
+  .dark :focus-visible { box-shadow: 0 0 0 2px #000, 0 0 0 4px #52a8ff; }
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23808080' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.25rem !important;
+  }
 }
 
-/* Smooth transitions for interactive elements */
-* {
-  @apply transition-colors duration-150;
+@layer components {
+  /* Buttons: Geist style, 6px radius, flat */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium
+      transition-[background-color,color,border-color] duration-150
+      disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-[#171717] text-white hover:bg-[#383838]
+      dark:bg-[#ededed] dark:text-black dark:hover:bg-white;
+  }
+  .btn-secondary {
+    @apply btn border border-[#e5e5e5] bg-white text-[#171717] hover:bg-[#f2f2f2] hover:border-[#d4d4d4]
+      dark:border-[#2e2e2e] dark:bg-black dark:text-[#ededed] dark:hover:bg-[#1a1a1a] dark:hover:border-[#3d3d3d];
+  }
+  .btn-danger {
+    @apply btn border border-[#e5e5e5] bg-white text-[#171717] hover:bg-[#e5484d] hover:border-[#e5484d] hover:text-white
+      dark:border-[#2e2e2e] dark:bg-black dark:text-[#ededed] dark:hover:bg-[#e5484d] dark:hover:border-[#e5484d] dark:hover:text-white;
+  }
+  .btn-ghost {
+    @apply btn text-[#666] hover:text-[#171717] hover:bg-black/5 dark:text-[#a1a1a1] dark:hover:text-white dark:hover:bg-white/10;
+  }
+  .btn-md { @apply h-10 px-4; }
+  .btn-lg { @apply h-12 px-6 text-base; }
+  .btn-sm { @apply h-8 px-3 text-[13px]; }
+
+  /* Form */
+  .field-label { @apply block text-[13px] font-medium text-[#666] dark:text-[#a1a1a1] mb-2; }
+  .field {
+    @apply w-full h-10 px-3 rounded-md border border-[#e5e5e5] bg-white text-sm text-[#171717]
+      placeholder:text-[#8f8f8f] transition-[border-color,box-shadow] duration-150
+      hover:border-[#d4d4d4] focus:outline-none focus:border-[#171717]
+      dark:border-[#2e2e2e] dark:bg-black dark:text-[#ededed] dark:placeholder:text-[#6b6b6b]
+      dark:hover:border-[#3d3d3d] dark:focus:border-[#ededed];
+  }
+  .field:focus { box-shadow: 0 0 0 3px rgba(0,112,243,0.18); }
+  .dark .field:focus { box-shadow: 0 0 0 3px rgba(82,168,255,0.22); }
+  textarea.field { @apply h-auto py-2.5; }
+  .field-error { @apply !border-[#e5484d]; }
+
+  /* Surfaces: flat panels with a 1px border */
+  .surface {
+    @apply rounded-xl border border-[#ebebeb] bg-white transition-[border-color,box-shadow] duration-150
+      dark:border-[#242424] dark:bg-[#0a0a0a];
+  }
+  .spot { position: relative; }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-[#fafafa] px-2.5 py-0.5 text-xs font-medium
+      text-[#666] dark:border-[#2e2e2e] dark:bg-[#111] dark:text-[#a1a1a1];
+  }
+  .notice {
+    @apply rounded-md border border-[#e5484d]/30 bg-[#e5484d]/10 px-4 py-3 text-sm text-[#c62a2f] dark:text-[#ff6369];
+  }
+  .eyebrow { @apply text-[13px] font-medium text-[#666] dark:text-[#a1a1a1]; }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
+/* Faint grid backdrop for hero areas, like vercel.com */
+.glow {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  background-image:
+    linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 80%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 80%);
 }
-::-webkit-scrollbar-thumb {
-  background-color: #bfdbfe;
-  border-radius: 9999px;
+.dark .glow {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px);
+}
+/* Rainbow edge under the hero, the one splash of colour */
+.rainbow-bar {
+  height: 2px;
+  background: linear-gradient(90deg, #0070f3, #8e4ec6, #e93d82, #f76b15, #30a46c, #0070f3);
+}
+.text-fade { color: inherit; }
+.hairline { height: 1px; @apply bg-[#ebebeb] dark:bg-[#242424]; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.18); border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
+.dark ::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.18); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

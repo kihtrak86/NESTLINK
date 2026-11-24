@@ -5,3 +5,16 @@ dist
 build
 .vscode
 .DS_Store
+.env
+server/.env
+client/.env
+embedding-service/.env
+.venv/
+
+.env
+server/.env
+client/.env
+embedding-service/.env
+.venv/
+__pycache__/
+node_modules/

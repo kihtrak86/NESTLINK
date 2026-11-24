@@ -6,7 +6,7 @@ export default function Pagination({ page, pages, total, onPageChange }) {
     onPageChange(p);
   };
 
-  // Build a compact page list: first, last, current +/-1, with ellipses
+  // Compact page list: first, last, current +/-1, with ellipses
   const pageNumbers = [];
   for (let p = 1; p <= pages; p++) {
     if (p === 1 || p === pages || Math.abs(p - page) <= 1) {
@@ -17,33 +17,33 @@ export default function Pagination({ page, pages, total, onPageChange }) {
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-8">
-      <p className="text-sm text-slate-500 dark:text-slate-400">
+    <nav
+      aria-label="Pagination"
+      className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-12 pt-6 border-t border-black/10 dark:border-white/10"
+    >
+      <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">
         Page {page} of {pages} &middot; {total} total
       </p>
 
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => goTo(page - 1)}
-          disabled={page === 1}
-          className="px-3 py-1.5 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
+        <button onClick={() => goTo(page - 1)} disabled={page === 1} className="btn-secondary btn-sm">
           Prev
         </button>
 
         {pageNumbers.map((p, idx) =>
           p === "..." ? (
-            <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 dark:text-slate-500">
+            <span key={`ellipsis-${idx}`} className="px-2 text-black/60 dark:text-white/60">
               …
             </span>
           ) : (
             <button
               key={p}
               onClick={() => goTo(p)}
-              className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+              aria-current={p === page ? "page" : undefined}
+              className={`w-8 h-8 rounded-md text-sm font-medium transition-colors ${
                 p === page
-                  ? "bg-brand-600 text-white"
-                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  ? "bg-[#171717] text-white dark:bg-[#ededed] dark:text-black"
+                  : "text-black/60 dark:text-white/60 hover:bg-carbon-100 dark:hover:bg-carbon-800 hover:text-black dark:hover:text-white"
               }`}
             >
               {p}
@@ -51,14 +51,10 @@ export default function Pagination({ page, pages, total, onPageChange }) {
           )
         )}
 
-        <button
-          onClick={() => goTo(page + 1)}
-          disabled={page === pages}
-          className="px-3 py-1.5 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
+        <button onClick={() => goTo(page + 1)} disabled={page === pages} className="btn-secondary btn-sm">
           Next
         </button>
       </div>
-    </div>
+    </nav>
   );
 }

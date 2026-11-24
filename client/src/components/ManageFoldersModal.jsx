@@ -25,32 +25,31 @@ export default function ManageFoldersModal({ isOpen, onClose, folders, onDelete 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6"
+        className="surface bg-white dark:bg-[#0a0a0a] w-full max-w-md p-7 shadow-pop dark:shadow-none animate-scale-in"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Manage folders"
       >
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Manage Folders</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold tracking-tight">Manage folders</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl leading-none"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-carbon-100 dark:hover:bg-carbon-800 text-xl leading-none"
             aria-label="Close"
           >
             &times;
           </button>
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400 px-3 py-2 rounded-lg mb-4">
-            {error}
-          </p>
-        )}
+        {error && <p className="notice mb-4">{error}</p>}
 
         {folders.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-8">
+          <p className="text-sm text-black/60 dark:text-white/60 text-center py-10">
             No folders yet. Create one when adding a bookmark.
           </p>
         ) : (
@@ -58,15 +57,13 @@ export default function ManageFoldersModal({ isOpen, onClose, folders, onDelete 
             {folders.map((folder) => (
               <li
                 key={folder._id}
-                className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600"
+                className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-md border border-[#ebebeb] dark:border-[#242424]"
               >
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
-                  {folder.name}
-                </span>
+                <span className="text-sm font-medium truncate">{folder.name}</span>
                 <button
                   onClick={() => handleDelete(folder)}
                   disabled={deletingId === folder._id}
-                  className="text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 px-2.5 py-1 rounded-md disabled:opacity-50"
+                  className="btn-danger btn-sm"
                 >
                   {deletingId === folder._id ? "Deleting..." : "Delete"}
                 </button>
@@ -75,10 +72,7 @@ export default function ManageFoldersModal({ isOpen, onClose, folders, onDelete 
           </ul>
         )}
 
-        <button
-          onClick={onClose}
-          className="w-full mt-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium"
-        >
+        <button onClick={onClose} className="btn-secondary h-11 w-full mt-5">
           Close
         </button>
       </div>

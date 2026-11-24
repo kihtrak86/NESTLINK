@@ -1,12 +1,14 @@
 {
   "name": "tabshelf-server",
-  "version": "1.0.0",
-  "description": "TabShelf backend API",
+  "version": "1.1.0",
+  "description": "NestLink backend API with AI-Powered Semantic Search",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "backfill:embeddings": "node scripts/backfillEmbeddings.js",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

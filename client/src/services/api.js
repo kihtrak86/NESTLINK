@@ -43,10 +43,11 @@ export const resetPasswordRequest = (token, password) =>
 
 // ---- Folders ----
 export const getFolders = () => api.get("/folders").then((res) => res.data);
-export const createFolder = (name) => api.post("/folders", { name }).then((res) => res.data);
+export const createFolder = (name, description = "") =>
+  api.post("/folders", { name, description }).then((res) => res.data);
 export const deleteFolder = (id) => api.delete(`/folders/${id}`).then((res) => res.data);
 
-// ---- Bookmarks ----
+// ---- Bookmarks (Phase 1) ----
 // Returns { bookmarks, pagination: { total, page, limit, pages } }
 export const getBookmarks = ({ search = "", folder = "", tag = "", page = 1, limit = 9 } = {}) => {
   const params = { page, limit };
@@ -54,6 +55,14 @@ export const getBookmarks = ({ search = "", folder = "", tag = "", page = 1, lim
   if (folder && folder !== "All") params.folder = folder;
   if (tag && tag !== "All") params.tag = tag;
   return api.get("/bookmarks", { params }).then((res) => res.data);
+};
+
+// Returns { query, results, count, limit }
+export const semanticSearchBookmarks = ({ q = "", limit = 12, folder = "", tag = "" } = {}) => {
+  const params = { q, limit };
+  if (folder && folder !== "All") params.folder = folder;
+  if (tag && tag !== "All") params.tag = tag;
+  return api.get("/bookmarks/semantic-search", { params }).then((res) => res.data);
 };
 
 export const getTags = () => api.get("/bookmarks/tags").then((res) => res.data);
@@ -66,5 +75,36 @@ export const updateBookmark = (id, bookmark) =>
 
 export const deleteBookmark = (id) =>
   api.delete(`/bookmarks/${id}`).then((res) => res.data);
+
+// ---- AI Insights & Webpage Understanding (Phase 2) ----
+export const extractUrlPreview = (url) =>
+  api.post("/bookmarks/extract-preview", { url }).then((res) => res.data);
+
+export const getBookmarkAiInsights = (id) =>
+  api.get(`/bookmarks/${id}/ai-insights`).then((res) => res.data);
+
+export const getBookmarkProcessingStatus = (id) =>
+  api.get(`/bookmarks/${id}/processing-status`).then((res) => res.data);
+
+export const triggerBookmarkProcessing = (id, options = {}) =>
+  api.post(`/bookmarks/${id}/process`, options).then((res) => res.data);
+
+export const extractBookmarkMetadata = (id, options = {}) =>
+  api.post(`/bookmarks/${id}/extract`, options).then((res) => res.data);
+
+export const regenerateBookmarkSummary = (id) =>
+  api.post(`/bookmarks/${id}/summary/regenerate`).then((res) => res.data);
+
+export const suggestBookmarkTags = (id) =>
+  api.post(`/bookmarks/${id}/tags/suggest`).then((res) => res.data);
+
+export const respondToTagSuggestions = (id, payload) =>
+  api.patch(`/bookmarks/${id}/tags/suggestions`, payload).then((res) => res.data);
+
+export const recommendBookmarkFolder = (id) =>
+  api.post(`/bookmarks/${id}/folder/recommend`).then((res) => res.data);
+
+export const respondToFolderRecommendation = (id, payload) =>
+  api.patch(`/bookmarks/${id}/folder/recommendation`, payload).then((res) => res.data);
 
 export default api;

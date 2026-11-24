@@ -7,6 +7,12 @@ const folderSchema = new mongoose.Schema(
       required: [true, "Folder name is required"],
       trim: true,
     },
+    description: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: [300, "Folder description cannot exceed 300 characters"],
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
