@@ -1,39 +1,39 @@
-# 🔖 NestLink AI — Smart Bookmark Manager (Phase 1 + Phase 2)
+# 🔖 NestLink — Intelligent Bookmark Manager
 
-![React](https://img.shields.io/badge/Frontend-React.js-61DAFB?logo=react&logoColor=white)
-![Tailwind](https://img.shields.io/badge/Styling-TailwindCSS-38B2AC?logo=tailwind-css&logoColor=white)
-![Node.js](https://img.shields.io/badge/Backend-Node.js-339933?logo=node.js&logoColor=white)
-![Express.js](https://img.shields.io/badge/Framework-Express.js-000000?logo=express&logoColor=white)
-![FastAPI](https://img.shields.io/badge/AI_Service-FastAPI-009688?logo=fastapi&logoColor=white)
-![MongoDB](https://img.shields.io/badge/Database-MongoDB_Atlas-47A248?logo=mongodb&logoColor=white)
+
+
+
+
+
+
 
 ## 📌 Overview
 
-**NestLink** is a full-stack smart bookmark manager that lets users save, organize, and retrieve website links using custom folders, tags, keyword search, **Phase 1 AI Semantic Search**, and **Phase 2 Intelligent Bookmark Understanding**.
+**NestLink** is a full-stack intelligent bookmark manager and personal knowledge-management system. Users can save, organize, and retrieve links using custom folders, tags, keyword search, **AI Semantic Search**, and **automated webpage understanding**.
 
-- **Phase 1 (Preserved)**: User authentication (JWT + bcrypt), Resend password recovery, CRUD for bookmarks/folders/tags, keyword search, 384-dimensional embeddings (`sentence-transformers/all-MiniLM-L6-v2`), MongoDB Atlas Vector Search, and batched embedding backfill.
-- **Phase 2 (New)**: Automatic SSRF-hardened webpage metadata & content extraction, provider-independent LLM bookmark summaries (Gemini API initial provider), structured AI tag suggestions preferring existing user tags, and intelligent folder recommendations — all processed asynchronously without blocking bookmark creation, while keeping users strictly in control of accepting or rejecting AI suggestions.
+When a user saves a URL, NestLink saves the bookmark immediately and runs an asynchronous background pipeline that securely fetches webpage metadata and article content, generates a concise grounded AI summary, suggests normalized tags (prioritizing the user's existing taxonomy), recommends the best folder, and indexes a 384-dimensional vector embedding in **MongoDB Atlas Vector Search**—keeping the user in full control of accepting or rejecting AI suggestions.
 
 ---
 
-## 🏗️ System & Phase 2 Processing Architecture
+## 🏗️ System Architecture
 
 ```text
-React Frontend (Dashboard, BookmarkModal, BookmarkCard, BookmarkDetailsModal)
+React + Vite + Tailwind Frontend
         │
         ▼
 Node.js / Express Backend
-  ├── Bookmark CRUD (saves immediately, returns 201)
-  ├── Phase 2 AI Insights API (JWT auth + ownership checks + per-user rate limits)
-  ├── Background AI Processing Queue (in-process async, deduplicated, retries, partial failures)
-  │     1. URL & SSRF Validation (HTTP/HTTPS only, DNS & redirect-hop private IP blocking)
-  │     2. Webpage Metadata & Content Extraction (timeout, 1.5MB cap, no JS, LRU/TTL cache)
-  │     3. Provider-Independent LLM Layer (Gemini API via GEMINI_API_KEY)
+  ├── Auth & User Isolation (JWT + bcryptjs + Resend password recovery)
+  ├── Bookmark & Folder CRUD (non-blocking save, returns 201 immediately)
+  ├── AI Insights API (per-user sliding-window rate limits + ownership checks)
+  ├── Asynchronous AI Processing Queue (in-flight deduplication, retries, partial failure recovery)
+  │     1. URL & SSRF Validation (HTTP/HTTPS only, DNS resolution & redirect-hop private IP blocking)
+  │     2. Webpage Metadata & Content Extraction (timeout, 1.5MB cap, no JS execution, LRU/TTL cache)
+  │     3. Provider-Independent LLM Layer (Google Gemini API via GEMINI_API_KEY)
   │        ├── Concise 2–4 Sentence Grounded Summary
   │        ├── 3–5 Normalized Structured Tag Suggestions
-  │        └── Folder Recommendation (existing folder or new suggestion + reason)
-  │     4. MongoDB Bookmark Update (scoped by { _id, user })
-  │     5. 384-dim Embedding Refresh (via FastAPI Embedding Service when content hash changes)
+  │        └── Folder Recommendation (existing folder match or new folder suggestion + rationale)
+  │     4. MongoDB Bookmark Update (strictly scoped by { _id, user })
+  │     5. 384-dim Embedding Refresh (content-hash gated)
   │
   ├──► Python FastAPI Embedding Service (sentence-transformers/all-MiniLM-L6-v2, 384 dims)
   └──► MongoDB Atlas + Atlas Vector Search (bookmark_vector_index)
@@ -41,49 +41,55 @@ Node.js / Express Backend
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### Phase 1 Features (Unchanged)
-- **Authentication & Security**: Signup, login, JWT-protected routes, bcrypt password hashing, and Resend password recovery.
-- **AI Semantic Search**: Natural-language search powered by `sentence-transformers/all-MiniLM-L6-v2` and MongoDB Atlas Vector Search (`cosine` similarity) strictly isolated per user.
-- **Keyword & Filter Parity**: Instant switching between Keyword Search and AI Search, folder/tag filters, pagination, and dark/light themes.
-- **Batched Embedding Backfill**: CLI script (`npm run backfill:embeddings`) for existing bookmarks.
-
-### Phase 2 Features (New)
-- **Automatic Webpage Metadata Extraction**: Extracts title, description, Open Graph title/description/image, favicon, canonical URL, domain, author, publication date, and clean readable article text while stripping scripts, styles, navigation, and ads.
-  - **Security**: HTTP/HTTPS only, strict SSRF protection (blocks `localhost`, private IPv4/IPv6 ranges, link-local/cloud metadata IPs, internal hostnames, DNS rebinding, and redirect hops), strict timeouts, response byte limits, zero JS execution, and bounded LRU/TTL caching.
-  - **Pre-save Preview**: Users can click **Fetch info** in the Add Bookmark modal to preview/populate title and description before saving.
-- **AI-Generated Bookmark Summaries**: Generates concise 2–4 sentence grounded summaries explaining the main subject and usefulness of each saved resource, with clear fallbacks when content is sparse and on-demand regeneration.
-- **Intelligent Tag Suggestions**: Suggests 3–5 normalized structured tags per bookmark, preferring the user's existing tags and never automatically overwriting user-selected tags. Users can accept, edit before accepting, or reject suggestions.
-- **Intelligent Folder Recommendations**: Evaluates existing user folders (names and optional descriptions) to recommend the best match — or proposes a new folder name with a brief explanation. Never moves bookmarks or creates duplicate folders without explicit user approval.
+- **AI Semantic Search**: Natural-language search powered by `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional L2-normalized vectors) and MongoDB Atlas Vector Search (`cosine` similarity) with strict per-user isolation.
+- **Automatic Webpage Metadata Extraction**: Extracts title, description, Open Graph tags, favicon, canonical URL, domain, author, publication date, and clean readable article text while stripping scripts, styles, navigation, and ads. Includes a pre-save **Fetch info** preview in the bookmark modal.
+- **SSRF-Hardened Fetching**: Restricts to `http://` and `https://`, blocks `localhost`, private IPv4/IPv6 ranges, link-local/cloud metadata IPs, internal hostnames, DNS rebinding, and unsafe redirect hops, with strict timeouts, streaming byte limits, zero JS execution, and bounded LRU/TTL caching.
+- **AI-Generated Bookmark Summaries**: Produces concise 2–4 sentence grounded summaries explaining the subject and usefulness of each saved page, with sparse-content fallbacks, prompt-injection delimiters, and on-demand regeneration.
+- **Intelligent Tag Suggestions**: Suggests 3–5 normalized structured tags per bookmark, preferring the user's existing tags and never overwriting user-selected tags. Users can accept, edit before accepting, or reject suggestions.
+- **Intelligent Folder Recommendations**: Evaluates existing user folders (names and optional descriptions) to recommend the best match—or proposes a new folder with a brief rationale—without ever moving bookmarks or creating duplicate folders automatically.
+- **Authentication & UX**: JWT authentication, bcrypt password hashing, Resend-powered password recovery, keyword & semantic search toggle, folder/tag filtering, pagination, and dark/light mode.
 
 ---
 
-## 🗄️ Database Schema Changes (Phase 2)
+## 🛠 Tech Stack
 
-All Phase 1 fields on `Bookmark` (`user`, `title`, `description`, `url`, `folder`, `tags`, hidden `embedding`, `embeddingModel`, `embeddingContentHash`, `embeddingUpdatedAt`) are preserved intact.
-
-### Added to `Bookmark` (`server/models/Bookmark.js`)
-- `extractedMetadata`: `{ title, description, ogTitle, ogDescription, ogImage, favicon, canonicalUrl, domain, author, publishedAt, textPreview (max 4000 chars), extractedAt }`
-- `aiSummary`: `{ text (max 1500 chars), status ("idle"|"generated"|"fallback"|"failed"), provider, model, updatedAt }`
-- `suggestedTags`: `[{ name, normalized, status ("pending"|"accepted"|"rejected"), isExistingUserTag }]`
-- `suggestedFolder`: `{ name, isNewFolder, reason, status ("none"|"pending"|"accepted"|"rejected"), updatedAt }`
-- `processingStatus`: `"idle" | "pending" | "extracting" | "analyzing" | "completed" | "partial" | "failed"`
-- `lastProcessedAt`: `Date`
-- `contentHash`: `String` (`select: false` — avoids redundant reprocessing of unchanged pages)
-- `aiProcessingError`: `{ stage, message, retryCount, occurredAt }` (sanitized error details)
-- **New Indexes**: `{ user: 1, processingStatus: 1 }` and `{ user: 1, url: 1 }`
-
-### Added to `Folder` (`server/models/Folder.js`)
-- `description`: optional `String` (max 300 chars) used to improve folder recommendation accuracy.
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 18, Vite, Tailwind CSS, Axios, React Router |
+| **Backend API** | Node.js (18+), Express.js, Mongoose |
+| **LLM Integration** | Provider-independent LLM layer (Google Gemini `gemini-3.5-flash-lite`) |
+| **Embedding Microservice** | Python 3.11, FastAPI, Uvicorn, Sentence Transformers (`all-MiniLM-L6-v2`) |
+| **Database & Vector Search** | MongoDB Atlas + MongoDB Atlas Vector Search (384 dims, cosine) |
+| **Security & Auth** | JWT, bcryptjs, SSRF DNS/IP validator, per-user rate limiter |
+| **Email & Hosting** | Resend, Vercel (Frontend), Render (Express API & FastAPI Service) |
 
 ---
 
-## 🔐 Environment Variables & Gemini API Configuration
+## 🗄️ Database Schema Overview
+
+### `Bookmark` (`server/models/Bookmark.js`)
+- **Core Fields**: `user` (ObjectId, indexed), `title`, `description`, `url`, `folder`, `tags`
+- **Vector Search Fields (`select: false`)**: `embedding` (384-dim `[Number]`), `embeddingModel`, `embeddingContentHash`, `embeddingUpdatedAt`
+- **AI Understanding Fields**:
+  - `extractedMetadata`: `{ title, description, ogTitle, ogDescription, ogImage, favicon, canonicalUrl, domain, author, publishedAt, textPreview (max 4000 chars), extractedAt }`
+  - `aiSummary`: `{ text (max 1500 chars), status ("idle"|"generated"|"fallback"|"failed"), provider, model, updatedAt }`
+  - `suggestedTags`: `[{ name, normalized, status ("pending"|"accepted"|"rejected"), isExistingUserTag }]`
+  - `suggestedFolder`: `{ name, isNewFolder, reason, status ("none"|"pending"|"accepted"|"rejected"), updatedAt }`
+  - `processingStatus`: `"idle" | "pending" | "extracting" | "analyzing" | "completed" | "partial" | "failed"`
+  - `lastProcessedAt`, `contentHash` (`select: false`), `aiProcessingError`
+- **Indexes**: `{ user: 1, createdAt: -1 }`, `{ user: 1, processingStatus: 1 }`, `{ user: 1, url: 1 }`
+
+### `Folder` (`server/models/Folder.js`)
+- `name`, `description` (optional, max 300 chars), `user` (case-insensitive unique index per user)
+
+---
+
+## 🔐 Environment Variables
 
 ### 1. Express Backend (`server/.env`)
-
-Copy `server/.env.example` to `server/.env` and fill in your credentials (never commit `.env`):
+Copy `server/.env.example` to `server/.env`:
 
 ```env
 PORT=5000
@@ -93,7 +99,7 @@ JWT_SECRET=change_this_to_a_long_random_secret_string
 JWT_EXPIRES_IN=7d
 RESEND_API_KEY=re_your_resend_api_key
 
-# Phase 1: AI Semantic Search & Embedding Service
+# Semantic Search & Embedding Service
 EMBEDDING_SERVICE_URL=http://localhost:8000
 EMBEDDING_API_KEY=
 EMBEDDING_TIMEOUT_MS=15000
@@ -102,7 +108,7 @@ EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ATLAS_VECTOR_INDEX_NAME=bookmark_vector_index
 SEMANTIC_MIN_SCORE=0
 
-# Phase 2: Intelligent Bookmark Understanding
+# AI Understanding (LLM & Metadata Extraction)
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-3.5-flash-lite
@@ -123,20 +129,15 @@ AI_RATE_LIMIT_MAX_REQUESTS=20
 EXTRACT_RATE_LIMIT_MAX_REQUESTS=30
 ```
 
-#### Obtaining a Gemini API Key
-1. Open Google AI Studio and generate an API key.
-2. Set `GEMINI_API_KEY` in `server/.env` (local) and in Render's Environment tab (production).
-3. Optional: switch models via `GEMINI_MODEL` (defaults to `gemini-3.5-flash-lite`) or register another provider via `server/services/llm/llmProvider.js` and `LLM_PROVIDER`.
-
 ### 2. Python Embedding Service (`embedding-service/.env`)
-Unchanged from Phase 1 (see `embedding-service/.env.example`).
+Copy `embedding-service/.env.example` to `embedding-service/.env` (`PORT=8000`, `EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2`, `EMBEDDING_DIMENSIONS=384`).
 
 ### 3. React Frontend (`client/.env`)
-Unchanged from Phase 1 (`VITE_API_URL=http://localhost:5000/api`).
+Copy `client/.env.example` to `client/.env` (`VITE_API_URL=http://localhost:5000/api`).
 
 ---
 
-## 🚀 Installation & Local Development
+## 🚀 Local Development Setup
 
 ### 1. Start the Python FastAPI Embedding Service
 ```bash
@@ -151,7 +152,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```bash
 cd server
 npm install
-cp .env.example .env        # fill in MONGO_URI, JWT_SECRET, GEMINI_API_KEY
+cp .env.example .env        # add MONGO_URI, JWT_SECRET, GEMINI_API_KEY
 npm run dev
 ```
 
@@ -165,7 +166,7 @@ npm run dev
 
 ### Running Tests
 ```bash
-# Backend unit & integration tests (Phase 1 + Phase 2)
+# Backend tests (semantic search, SSRF & extraction, AI pipeline)
 cd server
 npm test
 
@@ -178,49 +179,49 @@ cd embedding-service
 pytest -v
 ```
 
----
-
-## 📡 API Endpoint Documentation
-
-All `/api/bookmarks/*` endpoints require `Authorization: Bearer <jwt>` and strictly scope data to the authenticated user.
-
-### Phase 1 Endpoints (Preserved)
-- `GET /api/bookmarks` — Paginated bookmark list with keyword search (`title`, `description`, `folder`, `tags`, and `aiSummary.text`), folder, and tag filters.
-- `GET /api/bookmarks/semantic-search?q=...` — Atlas Vector Search semantic retrieval.
-- `GET /api/bookmarks/tags` — Distinct confirmed tags for the user.
-- `POST /api/bookmarks` — Create bookmark (saves immediately and queues background Phase 2 processing).
-- `PUT /api/bookmarks/:id` — Update bookmark (preserves user edits; re-processes if URL changes).
-- `DELETE /api/bookmarks/:id` — Delete bookmark and cancel any in-flight Phase 2 job.
-
-### Phase 2 Endpoints (New)
-| Method | Endpoint | Rate Limited | Description |
-|---|---|---|---|
-| `POST` | `/api/bookmarks/extract-preview` | Yes | Extract webpage metadata preview for `{ url }` prior to saving |
-| `GET` | `/api/bookmarks/:id/ai-insights` | No | Retrieve extracted metadata, AI summary, tag/folder suggestions, and status |
-| `GET` | `/api/bookmarks/:id/processing-status` | No | Lightweight polling endpoint for background job status |
-| `POST` | `/api/bookmarks/:id/process` | Yes | Trigger or retry the full Phase 2 pipeline (`202 Accepted`) |
-| `POST` | `/api/bookmarks/:id/extract` | Yes | Re-run webpage metadata extraction for a bookmark |
-| `POST` | `/api/bookmarks/:id/summary/regenerate` | Yes | Regenerate AI summary and refresh semantic embedding |
-| `POST` | `/api/bookmarks/:id/tags/suggest` | Yes | Generate fresh 3–5 structured tag suggestions |
-| `PATCH` | `/api/bookmarks/:id/tags/suggestions` | No | Accept, edit-and-accept, or reject tag suggestions (`action`: `accept`, `reject`, `accept_all`, `reject_all`) |
-| `POST` | `/api/bookmarks/:id/folder/recommend` | Yes | Generate an intelligent folder recommendation |
-| `PATCH` | `/api/bookmarks/:id/folder/recommendation` | No | Accept (moves bookmark, creates folder if new without duplicates) or reject folder recommendation |
+### Embedding Backfill CLI
+```bash
+cd server
+npm run backfill:embeddings -- --batch-size=25
+```
 
 ---
 
-## ☁️ Deployment Instructions (Vercel + Render + MongoDB Atlas)
+## 📡 API Endpoints
 
-1. **MongoDB Atlas**: No changes required to the existing `bookmark_vector_index` (384 dims, cosine, `user` filter). New secondary indexes are created automatically by Mongoose.
-2. **Render — Express Backend**:
-   - Deploy `server/` as a Node Web Service (`npm install`, `npm start`).
-   - Add `GEMINI_API_KEY` (and optional `LLM_PROVIDER=gemini`, `GEMINI_MODEL=gemini-3.5-flash-lite`) in Render's **Environment** settings alongside your existing Phase 1 variables.
-3. **Render — FastAPI Embedding Service**: Unchanged from Phase 1.
-4. **Vercel — React Frontend**: Deploy `client/` with `VITE_API_URL` pointing to your Render Express API URL.
+All `/api/bookmarks/*` routes require `Authorization: Bearer <jwt>` and enforce strict user ownership.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/bookmarks` | Paginated bookmark list with keyword search, folder, and tag filters |
+| `GET` | `/api/bookmarks/semantic-search?q=...` | Natural-language vector search via MongoDB Atlas Vector Search |
+| `GET` | `/api/bookmarks/tags` | Distinct confirmed tags for the authenticated user |
+| `POST` | `/api/bookmarks` | Create bookmark and queue asynchronous AI analysis |
+| `PUT` | `/api/bookmarks/:id` | Update bookmark (preserves user edits; refreshes AI/embedding when needed) |
+| `DELETE` | `/api/bookmarks/:id` | Delete bookmark and cancel any in-flight background job |
+| `POST` | `/api/bookmarks/extract-preview` | Extract webpage metadata preview for `{ url }` prior to saving |
+| `GET` | `/api/bookmarks/:id/ai-insights` | Retrieve extracted metadata, AI summary, tag/folder suggestions, and status |
+| `GET` | `/api/bookmarks/:id/processing-status` | Lightweight polling endpoint for background processing status |
+| `POST` | `/api/bookmarks/:id/process` | Trigger or retry the full AI understanding pipeline (`202 Accepted`) |
+| `POST` | `/api/bookmarks/:id/extract` | Re-run webpage metadata extraction |
+| `POST` | `/api/bookmarks/:id/summary/regenerate` | Regenerate AI summary and refresh semantic embedding |
+| `POST` | `/api/bookmarks/:id/tags/suggest` | Generate fresh structured tag suggestions |
+| `PATCH` | `/api/bookmarks/:id/tags/suggestions` | Accept, edit-and-accept, or reject suggested tags |
+| `POST` | `/api/bookmarks/:id/folder/recommend` | Generate an intelligent folder recommendation |
+| `PATCH` | `/api/bookmarks/:id/folder/recommendation` | Accept or reject the recommended folder |
 
 ---
 
-## ⚠️ Known Limitations
+## ☁️ Deployment (Vercel + Render + MongoDB Atlas)
 
-- **Static HTML Extraction Only**: By design (for security and resource efficiency), NestLink does not execute JavaScript from scraped webpages. Heavy client-side SPAs or bot-protected/paywalled sites may yield limited extracted text, in which case NestLink falls back gracefully to bookmark title/description or a clear fallback message.
-- **In-Process Queue & Cache**: The background job queue, rate-limit buckets, and metadata LRU cache live in Node.js process memory for zero-infrastructure compatibility with single-instance Render deployments. If the server restarts mid-job, pending/failed bookmarks can be retried from the UI (**Re-analyze page**) or `POST /api/bookmarks/:id/process`.
-- **External API Dependency**: Summary, tag, and folder generation require a valid `GEMINI_API_KEY` and outbound connectivity to the Gemini API; bookmark CRUD, metadata extraction, and Phase 1 semantic search continue working normally if the LLM provider is unavailable.
+1. **MongoDB Atlas**: Create an Atlas Vector Search index named `bookmark_vector_index` on the `bookmarks` collection (`numDimensions: 384`, `similarity: "cosine"`, `filter` on `user`).
+2. **Render — Python Embedding Service**: Deploy `embedding-service/` (via `Dockerfile` or Python 3) with `PORT=8000`, `EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2`, and `EMBEDDING_DIMENSIONS=384`.
+3. **Render — Express Backend**: Deploy `server/` with `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL`, `EMBEDDING_SERVICE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.5-flash-lite`, and `AI_COMBINED_PROMPT=true`.
+4. **Vercel — React Frontend**: Deploy `client/` with `VITE_API_URL` pointing to your Render backend `/api` URL.
+
+---
+
+## ⚠️ Architectural Notes
+
+- **Static HTML Extraction**: For security and low latency, NestLink parses static HTML without executing JavaScript; client-heavy SPAs or bot-protected pages degrade gracefully to user-provided title/description or a clear fallback state.
+- **Zero-Infrastructure Background Queue**: The async processing queue, rate-limit buckets, and metadata LRU cache run in-process for single-service Render compatibility; interrupted jobs can be retried anytime via the UI or `POST /api/bookmarks/:id/process`.
